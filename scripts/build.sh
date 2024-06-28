@@ -114,21 +114,15 @@ link-dist () {
   ln -s $(pwd)/dist "$DEV_ADDON_DIR"
 }
 
-anki () {
-   /Applications/Anki.app/Contents/MacOS/anki
-}
-
 test-dev () {
   clean
   link-dev
-  anki
 }
 
 test-build () {
   clean
   build
   link-dist
-  anki
 }
 
 if [ "$1" == "build" ]; then
