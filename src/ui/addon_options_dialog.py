@@ -105,6 +105,8 @@ class AddonOptionsDialog(QDialog):
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
         )
 
+        # TODO: Continue here on laptop on weekend (hence why I have pushed this to github lol since I didn't have time to set this up on my laptop yet)
+
         # Select model
         self.models_combo_box = QComboBox()
         self.models_combo_box.addItems(openai_models)
