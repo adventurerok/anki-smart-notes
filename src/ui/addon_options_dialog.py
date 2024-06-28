@@ -50,7 +50,8 @@ openai_models = ["gpt-3.5-turbo", "gpt-4o", "gpt-4-turbo", "gpt-4"]
 
 
 class AddonOptionsDialog(QDialog):
-    api_key_edit: QLineEdit
+    openai_api_key_edit: QLineEdit
+    forvo_api_key_edit: QLineEdit
     table_buttons: QHBoxLayout
     remove_button: QPushButton
     table: QTableWidget
@@ -82,18 +83,25 @@ class AddonOptionsDialog(QDialog):
         title_box_layout.addWidget(subtitle)
 
         # Form
-        get_api_key_label = QLabel(
+        get_openai_api_key_label = QLabel(
             "An API key is required. Free tier use is limited to three requests per minute. <a href='https://platform.openai.com/account/api-keys/'>Get an API key.</a>"
         )
-        font = get_api_key_label.font()
+        font = get_openai_api_key_label.font()
         font.setPointSize(10)
-        get_api_key_label.setOpenExternalLinks(True)
-        get_api_key_label.setFont(font)
+        get_openai_api_key_label.setOpenExternalLinks(True)
+        get_openai_api_key_label.setFont(font)
 
-        self.api_key_edit = QLineEdit()
-        self.api_key_edit.setPlaceholderText("sk-proj-1234...")
-        self.api_key_edit.setMinimumWidth(500)
-        self.api_key_edit.setSizePolicy(
+        self.openai_api_key_edit = QLineEdit()
+        self.openai_api_key_edit.setPlaceholderText("sk-proj-1234...")
+        self.openai_api_key_edit.setMinimumWidth(500)
+        self.openai_api_key_edit.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+        )
+
+        self.forvo_api_key_edit = QLineEdit()
+        self.forvo_api_key_edit.setPlaceholderText("forvo-api-key")
+        self.forvo_api_key_edit.setMinimumWidth(500)
+        self.forvo_api_key_edit.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
         )
 
@@ -106,8 +114,8 @@ class AddonOptionsDialog(QDialog):
 
         form = QFormLayout()
         form.setVerticalSpacing(12)
-        form.addRow("<b>🔑 OpenAI API Key:</b>", self.api_key_edit)
-        form.addRow(get_api_key_label)
+        form.addRow("<b>🔑 OpenAI API Key:</b>", self.openai_api_key_edit)
+        form.addRow(get_openai_api_key_label)
         form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
 
         group_box = QGroupBox("API Key")
@@ -205,7 +213,7 @@ class AddonOptionsDialog(QDialog):
         self.update_ui()
 
     def update_ui(self) -> None:
-        self.api_key_edit.setText(self.config.openai_api_key)
+        self.openai_api_key_edit.setText(self.config.openai_api_key)
         self.models_combo_box.setCurrentText(self.openai_model)
         self.generate_at_review_button.setChecked(self.generate_at_review)
         self.update_table()
@@ -263,7 +271,7 @@ class AddonOptionsDialog(QDialog):
         print(f"Editing {card_type}, {field}")
 
         # Save out API key jic
-        self.config.openai_api_key = self.api_key_edit.text()
+        self.config.openai_api_key = self.openai_api_key_edit.text()
 
         prompt_dialog = PromptDialog(
             self.prompts_map,
@@ -284,7 +292,7 @@ class AddonOptionsDialog(QDialog):
 
     def on_add(self, _: int) -> None:
         # Save out the API key in case it's been updated this run
-        self.config.openai_api_key = self.api_key_edit.text()
+        self.config.openai_api_key = self.openai_api_key_edit.text()
 
         prompt_dialog = PromptDialog(
             self.prompts_map, self.processor, self.on_update_prompts
@@ -304,7 +312,7 @@ class AddonOptionsDialog(QDialog):
         self.update_table()
 
     def on_accept(self) -> None:
-        self.config.openai_api_key = self.api_key_edit.text()
+        self.config.openai_api_key = self.openai_api_key_edit.text()
         self.config.prompts_map = self.prompts_map
         self.config.openai_model = self.openai_model
         self.config.generate_at_review = self.generate_at_review
