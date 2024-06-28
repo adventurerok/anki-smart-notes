@@ -18,6 +18,40 @@
 # along with Smart Notes.  If not, see <https://www.gnu.org/licenses/>.
 
 
+find_python_env() {
+    # List of common virtual environment directory names
+    local env_dirs=(".env" ".venv" "env" "venv")
+
+    # Function to check if a directory contains a Python executable
+    is_python_env() {
+        [[ -d "$1" && -f "$1/bin/python" ]]
+    }
+
+    # Check each directory
+    for dir in "${env_dirs[@]}"; do
+        if is_python_env "$dir"; then
+            echo "$dir"
+            return 0
+        fi
+    done
+
+    echo ""
+    return 1
+}
+
+get_python_version() {
+    local venv_path="$1"
+    local python_path="$venv_path/bin/python"
+
+    if [[ ! -f "$python_path" ]]; then
+        echo "Error: Python executable not found in $venv_path" >&2
+        return 1
+    fi
+
+    local version=$("$python_path" -c "import sys; print(f'python{sys.version_info.major}.{sys.version_info.minor}')")
+    echo "$version"
+}
+
 
 build () {
   echo "Building..."
@@ -25,32 +59,36 @@ build () {
   mkdir -p dist/vendor
 
   cp *.py dist/
-  cp .env dist/
   cp manifest.json dist/
   cp config.json dist/
   cp -r src dist/
-  cp license dist/
+  cp LICENSE dist/
   cp changelog.md dist/
   echo "environment = \"PROD\"" > dist/env.py
 
   # Nuke any pycache
   rm -rf dist/__pycache__
 
+  local python_env=$(find_python_env)
+  local python_version=$(get_python_version "$python_env")
+
+  cp $python_env dist
+
   # Copy deps
-  cp -r env/lib/python3.11/site-packages/aiohttp dist/vendor/
-  cp -r env/lib/python3.11/site-packages/aiosignal dist/vendor/
-  cp -r env/lib/python3.11/site-packages/async_timeout dist/vendor/
-  cp -r env/lib/python3.11/site-packages/frozenlist dist/vendor/
-  cp -r env/lib/python3.11/site-packages/attrs dist/vendor/
-  cp -r env/lib/python3.11/site-packages/multidict dist/vendor/
-  cp -r env/lib/python3.11/site-packages/yarl dist/vendor/
-  cp -r env/lib/python3.11/site-packages/idna dist/vendor/
+  cp -r "$python_env/lib/$python_version/site-packages/aiohttp" dist/vendor/
+  cp -r "$python_env/lib/$python_version/site-packages/aiosignal" dist/vendor/
+  cp -r "$python_env/lib/$python_version/site-packages/async_timeout" dist/vendor/
+  cp -r "$python_env/lib/$python_version/site-packages/frozenlist" dist/vendor/
+  cp -r "$python_env/lib/$python_version/site-packages/attrs" dist/vendor/
+  cp -r "$python_env/lib/$python_version/site-packages/multidict" dist/vendor/
+  cp -r "$python_env/lib/$python_version/site-packages/yarl" dist/vendor/
+  cp -r "$python_env/lib/$python_version/site-packages/idna" dist/vendor/
   ## Sentry
-  cp -r env/lib/python3.11/site-packages/sentry_sdk dist/vendor/
-  cp -r env/lib/python3.11/site-packages/certifi dist/vendor/
-  cp -r env/lib/python3.11/site-packages/urllib3 dist/vendor/
+  cp -r "$python_env/lib/$python_version/site-packages/sentry_sdk" dist/vendor/
+  cp -r "$python_env/lib/$python_version/site-packages/certifi" dist/vendor/
+  cp -r "$python_env/lib/$python_version/site-packages/urllib3" dist/vendor/
   # Dotenv
-  cp -r env/lib/python3.11/site-packages/dotenv dist/vendor/
+  cp -r "$python_env/lib/$python_version/site-packages/dotenv" dist/vendor/
 
 
   # Zip it
@@ -59,19 +97,21 @@ build () {
   cd ..
 }
 
+DEV_ADDON_DIR="$ANKI_ADDONS_DIR/smart-notes"
+
 clean () {
   echo "Cleaning..."
   rm -rf dist
-  unlink ~/Library/Application\ Support/Anki2/addons21/smart-notes
+  unlink "$DEV_ADDON_DIR"
 }
 
 link-dev () {
-  ln -s $(pwd) ~/Library/Application\ Support/Anki2/addons21/smart-notes
+  ln -s $(pwd) "$DEV_ADDON_DIR"
 }
 
 # Tests a production build by symlinking dist folder
 link-dist () {
-  ln -s $(pwd)/dist ~/Library/Application\ Support/Anki2/addons21/smart-notes
+  ln -s $(pwd)/dist "$DEV_ADDON_DIR"
 }
 
 anki () {
@@ -95,6 +135,10 @@ if [ "$1" == "build" ]; then
   build
 elif [ "$1" == "clean" ]; then
   clean
+elif [ "$1" == "link-dev" ]; then
+  link-dev
+elif [ "$1" == "link-dist" ]; then
+  link-dist
 elif [ "$1" == "test-dev" ]; then
   test-dev
 elif [ "$1" == "test-build" ]; then
