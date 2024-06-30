@@ -33,7 +33,7 @@ from aqt import (
     Qt,
     mw,
 )
-from ..config import PromptMap
+from ..config import PromptMap, NoteFieldMap
 from ..prompts import get_prompt_fields_lower, interpolate_prompt, prompt_has_error
 from .ui_utils import show_message_box
 from ..utils import get_fields, to_lowercase_dict
@@ -57,6 +57,7 @@ class PromptDialog(QDialog):
     def __init__(
         self,
         prompts_map: PromptMap,
+        note_fields_map: NoteFieldMap,
         processor: Processor,
         on_accept_callback: Callable[[PromptMap], None],
         card_type: Union[str, None] = None,
@@ -67,6 +68,7 @@ class PromptDialog(QDialog):
         self.processor = processor
         self.on_accept_callback = on_accept_callback
         self.prompts_map = prompts_map
+        self.note_fields_map = note_fields_map
 
         self.card_types = self.get_card_types()
         self.selected_card_type = card_type or self.card_types[0]
@@ -90,13 +92,20 @@ class PromptDialog(QDialog):
         card_combo_box.setCurrentText(self.selected_card_type)
         card_combo_box.currentTextChanged.connect(self.on_card_type_selected)
 
+        self.type_combo_box = QComboBox()
+        self.type_combo_box.addItems(["ChatGPT", "Forvo Audio"])
+
         card_label = QLabel("Card Type")
         field_label = QLabel("Target Field")
+        type_label = QLabel("Generation Type")
         layout = QVBoxLayout()
         layout.addWidget(card_label)
         layout.addWidget(card_combo_box)
         layout.addWidget(field_label)
         layout.addWidget(self.field_combo_box)
+        layout.addWidget(type_label)
+        layout.addWidget(self.type_combo_box)
+
 
         self.standard_buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Cancel
@@ -206,6 +215,7 @@ class PromptDialog(QDialog):
         if not self.selected_field or not self.selected_card_type:
             self.prompt_text_box.setText("")
             return
+
 
         prompt = (
             self.prompts_map.get("note_types", {})  # type: ignore

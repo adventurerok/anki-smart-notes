@@ -39,7 +39,7 @@ from PyQt6.QtCore import Qt
 
 from ..processor import Processor
 
-from ..config import Config, OpenAIModels, PromptMap
+from ..config import Config, OpenAIModels, PromptMap, NoteFieldMap, NoteTypeDetails
 from .prompt_dialog import PromptDialog
 from .ui_utils import show_message_box
 
@@ -62,6 +62,7 @@ class AddonOptionsDialog(QDialog):
     def __init__(self, config: Config, processor: Processor):
         super().__init__()
         self.processor = processor
+        self.note_fields_map = config.note_fields_map
         self.prompts_map = config.prompts_map
         self.openai_model = config.openai_model
         self.generate_at_review = config.generate_at_review
@@ -118,6 +119,7 @@ class AddonOptionsDialog(QDialog):
         form.setVerticalSpacing(12)
         form.addRow("<b>🔑 OpenAI API Key:</b>", self.openai_api_key_edit)
         form.addRow(get_openai_api_key_label)
+        form.addRow("<b>🔑 Forvo API Key:</b>", self.forvo_api_key_edit)
         form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
 
         group_box = QGroupBox("API Key")
@@ -216,6 +218,7 @@ class AddonOptionsDialog(QDialog):
 
     def update_ui(self) -> None:
         self.openai_api_key_edit.setText(self.config.openai_api_key)
+        self.forvo_api_key_edit.setText(self.config.forvo_api_key)
         self.models_combo_box.setCurrentText(self.openai_model)
         self.generate_at_review_button.setChecked(self.generate_at_review)
         self.update_table()
@@ -274,9 +277,11 @@ class AddonOptionsDialog(QDialog):
 
         # Save out API key jic
         self.config.openai_api_key = self.openai_api_key_edit.text()
+        self.config.forvo_api_key = self.forvo_api_key_edit.text()
 
         prompt_dialog = PromptDialog(
             self.prompts_map,
+            self.note_fields_map,
             self.processor,
             self.on_update_prompts,
             card_type=card_type,
@@ -295,9 +300,10 @@ class AddonOptionsDialog(QDialog):
     def on_add(self, _: int) -> None:
         # Save out the API key in case it's been updated this run
         self.config.openai_api_key = self.openai_api_key_edit.text()
+        self.config.forvo_api_key = self.forvo_api_key_edit.text()
 
         prompt_dialog = PromptDialog(
-            self.prompts_map, self.processor, self.on_update_prompts
+            self.prompts_map, self.note_fields_map, self.processor, self.on_update_prompts
         )
 
         if prompt_dialog.exec() == QDialog.DialogCode.Accepted:
@@ -311,11 +317,14 @@ class AddonOptionsDialog(QDialog):
         field = self.table.item(self.selected_row, 1).text()
         print(f"Removing {card_type}, {field}")
         self.prompts_map["note_types"][card_type]["fields"].pop(field)
+        self.note_fields_map.get(card_type, NoteTypeDetails.create ())["fields"].pop(field)
         self.update_table()
 
     def on_accept(self) -> None:
         self.config.openai_api_key = self.openai_api_key_edit.text()
+        self.config.forvo_api_key = self.forvo_api_key_edit.text()
         self.config.prompts_map = self.prompts_map
+        self.config.note_fields_map = self.note_fields_map
         self.config.openai_model = self.openai_model
         self.config.generate_at_review = self.generate_at_review
         self.accept()
@@ -330,6 +339,7 @@ class AddonOptionsDialog(QDialog):
         # TODO: this is so brittle
         self.config.restore_defaults()
         self.prompts_map = self.config.prompts_map
+        self.note_fields_map = self.config.note_fields_map
         self.openai_model = self.config.openai_model
         self.generate_at_review = self.config.generate_at_review
         self.update_ui()

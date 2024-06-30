@@ -21,13 +21,39 @@ from typing import Dict, TypedDict, Literal, Any, Union
 from aqt import mw, addons
 
 
-class NoteTypeMap(TypedDict):
+class PromptNoteTypeMap(TypedDict):
     fields: Dict[str, str]
 
 
 class PromptMap(TypedDict):
-    note_types: Dict[str, NoteTypeMap]
+    note_types: Dict[str, PromptNoteTypeMap]
 
+
+GenerationType = Literal["ChatGPT", "Forvo Audio"]
+
+class FieldDetails(TypedDict):
+    """Per note per field settings. New values should be optional."""
+    generation_type: Union[GenerationType, None]
+
+
+    # TODO: There is a Self type in Python 3.10, but apparently Anki doesn't
+    # use that version yet? It is in typing_extensions, but Anki was also
+    # unable to use that
+
+    @staticmethod
+    def create () -> Dict:
+        return FieldDetails(generation_type=None)
+
+
+class NoteTypeDetails(TypedDict):
+    """Per note settings. New values should be optional."""
+    fields: Dict[str, FieldDetails]
+
+    @staticmethod
+    def create() -> Dict :
+        return NoteTypeDetails(fields={})
+
+NoteFieldMap = Dict[str, NoteTypeDetails]
 
 OpenAIModels = Literal["gpt-3.5-turbo", "gpt-4o", "gpt-4-turbo", "gpt-4"]
 
@@ -36,7 +62,9 @@ class Config:
     """Fancy config class that uses the Anki addon manager to store config values."""
 
     openai_api_key: str
+    forvo_api_key: str
     prompts_map: PromptMap
+    note_fields_map: NoteFieldMap
     openai_model: OpenAIModels
     generate_at_review: bool
     times_used: int
