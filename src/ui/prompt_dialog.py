@@ -33,7 +33,7 @@ from aqt import (
     Qt,
     mw,
 )
-from ..config import PromptMap, NoteFieldMap
+from ..config import FieldDetails, NoteTypeDetails, PromptMap, NoteFieldMap
 from ..prompts import get_prompt_fields_lower, interpolate_prompt, prompt_has_error
 from .ui_utils import show_message_box
 from ..utils import get_fields, to_lowercase_dict
@@ -59,7 +59,7 @@ class PromptDialog(QDialog):
         prompts_map: PromptMap,
         note_fields_map: NoteFieldMap,
         processor: Processor,
-        on_accept_callback: Callable[[PromptMap], None],
+        on_accept_callback: Callable[[PromptMap, NoteFieldMap], None],
         card_type: Union[str, None] = None,
         field: Union[str, None] = None,
         prompt: Union[str, None] = None,
@@ -75,6 +75,10 @@ class PromptDialog(QDialog):
 
         self.fields = get_fields(self.selected_card_type)
         self.selected_field = field or get_fields(self.selected_card_type)[0]
+
+        self.field_details = self.note_fields_map.get(self.selected_card_type, NoteTypeDetails.create())['fields'].get(
+            self.selected_field, FieldDetails.create()
+        )
 
         self.prompt = prompt
         self.is_loading_prompt = False
@@ -94,6 +98,13 @@ class PromptDialog(QDialog):
 
         self.type_combo_box = QComboBox()
         self.type_combo_box.addItems(["ChatGPT", "Forvo Audio"])
+
+        generation_type = self.field_details.get("generation_type", "ChatGPT")
+        self.type_combo_box.setCurrentText(generation_type)
+
+        self.type_combo_box.currentTextChanged.connect(
+            lambda selected_type:
+                self.field_details.update({"generation_type": selected_type}))
 
         card_label = QLabel("Card Type")
         field_label = QLabel("Target Field")
@@ -216,7 +227,6 @@ class PromptDialog(QDialog):
             self.prompt_text_box.setText("")
             return
 
-
         prompt = (
             self.prompts_map.get("note_types", {})  # type: ignore
             .get(self.selected_card_type, {})
@@ -224,6 +234,13 @@ class PromptDialog(QDialog):
             .get(self.selected_field, "")
         )
         self.prompt_text_box.setText(prompt)
+
+        self.field_details = self.note_fields_map.get(self.selected_card_type, NoteTypeDetails.create ())['fields'].get(
+            self.selected_field, FieldDetails.create()
+        )
+
+        generation_type = self.field_details.get("generation_type", "ChatGPT")
+        self.type_combo_box.setCurrentText(generation_type)
 
     def on_text_changed(self):
         self.prompt = self.prompt_text_box.toPlainText()
@@ -305,7 +322,7 @@ class PromptDialog(QDialog):
         return not_ai_fields
 
     def on_accept(self):
-        if self.selected_card_type and self.selected_field and self.prompt:
+        if self.selected_card_type and self.selected_field and self.field_details and self.prompt:
             err = prompt_has_error(
                 self.prompt, self.selected_card_type, self.selected_field
             )
@@ -323,7 +340,12 @@ class PromptDialog(QDialog):
             self.prompts_map["note_types"][self.selected_card_type]["fields"][
                 self.selected_field
             ] = self.prompt
-            self.on_accept_callback(self.prompts_map)
+
+            if not self.note_fields_map.get(self.selected_card_type):
+                self.note_fields_map[self.selected_card_type] = NoteTypeDetails.create()
+            self.note_fields_map[self.selected_card_type]['fields'][self.selected_field] = self.field_details
+
+            self.on_accept_callback(self.prompts_map, self.note_fields_map)
             self.accept()
 
     def on_reject(self):

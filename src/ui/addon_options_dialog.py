@@ -39,12 +39,12 @@ from PyQt6.QtCore import Qt
 
 from ..processor import Processor
 
-from ..config import Config, OpenAIModels, PromptMap, NoteFieldMap, NoteTypeDetails
+from ..config import Config, FieldDetails, OpenAIModels, PromptMap, NoteFieldMap, NoteTypeDetails
 from .prompt_dialog import PromptDialog
 from .ui_utils import show_message_box
 
 
-OPTIONS_MIN_WIDTH = 750
+OPTIONS_MIN_WIDTH = 900
 
 openai_models = ["gpt-3.5-turbo", "gpt-4o", "gpt-4-turbo", "gpt-4"]
 
@@ -224,8 +224,8 @@ class AddonOptionsDialog(QDialog):
         self.update_table()
 
     def create_table(self) -> QTableWidget:
-        table = QTableWidget(0, 3)
-        table.setHorizontalHeaderLabels(["Note Type", "Target Field", "Prompt"])
+        table = QTableWidget(0, 4)
+        table.setHorizontalHeaderLabels(["Note Type", "Target Field", "Type", "Prompt"])
 
         # Selection
         table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -244,14 +244,27 @@ class AddonOptionsDialog(QDialog):
     def update_table(self) -> None:
         self.table.setRowCount(0)
 
+        note_types = set(self.prompts_map.get("note_types").keys()) | set(
+            self.note_fields_map.keys()
+        )
+
         row = 0
-        for note_type, field_prompts in self.prompts_map["note_types"].items():
-            for field, prompt in field_prompts["fields"].items():
+        for note_type in note_types:
+            field_prompts = self.prompts_map["note_types"][note_type].get("fields", {})
+            note_type_details = self.note_fields_map.get(note_type, NoteTypeDetails.create())
+
+            fields = set(field_prompts.keys()) | set(note_type_details["fields"].keys())
+
+            for field in fields:
+                prompt = field_prompts[field] 
+                field_details = note_type_details["fields"].get(field, FieldDetails.create())
                 print(field, prompt)
+                print(field, field_details)
                 self.table.insertRow(self.table.rowCount())
                 items = [
                     QTableWidgetItem(note_type),
                     QTableWidgetItem(field),
+                    QTableWidgetItem(field_details["generation_type"]),
                     QTableWidgetItem(prompt),
                 ]
                 for i, item in enumerate(items):
@@ -332,8 +345,9 @@ class AddonOptionsDialog(QDialog):
     def on_reject(self) -> None:
         self.reject()
 
-    def on_update_prompts(self, prompts_map: PromptMap) -> None:
+    def on_update_prompts(self, prompts_map: PromptMap, note_fields_map: NoteFieldMap) -> None:
         self.prompts_map = prompts_map
+        self.note_fields_map = note_fields_map
 
     def on_restore_defaults(self) -> None:
         # TODO: this is so brittle
